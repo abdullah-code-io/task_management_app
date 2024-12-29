@@ -3,158 +3,172 @@ import 'package:flutter_check_box_rounded/flutter_check_box_rounded.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:task_management_app/features/task_page/model/task_model.dart';
+import 'package:task_management_app/features/task_page/model/task_state.dart';
+import 'package:task_management_app/features/task_page/view_model/task_view_model.dart';
 
-class TaskPage extends ConsumerWidget {
+class TaskPage extends ConsumerStatefulWidget {
   const TaskPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskPage> createState() => _TaskPageState();
+}
+
+class _TaskPageState extends ConsumerState<TaskPage> {
+  @override
+  void initState() {
+    // Trigger loading of tasks after the first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(taskNotifierProvider.notifier).loadTasks();
+    });
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final taskState = ref.watch(taskNotifierProvider);
     final isTablet = MediaQuery.of(context).size.width > 600;
+
+    // if (taskState.isLoading) {
+    //   return const Center(child: CircularProgressIndicator());
+    // }
+    //
+    // if (taskState.isError) {
+    //   return const Center(child: Text('Failed to load tasks.'));
+    // }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Task Manager'),
+        title: const Text('Task Manager'),
         actions: [
           IconButton(
-            icon: Icon(Icons.search),
+            icon: const Icon(Icons.search),
             onPressed: () {
               // Handle search
             },
           ),
           IconButton(
-            icon: Icon(Icons.filter_list),
+            icon: const Icon(Icons.filter_list),
             onPressed: () {
               // Handle sorting or filtering
             },
           ),
         ],
       ),
-      body: isTablet ? _buildTabletLayout() : _buildMobileLayout(),
+      body: _buildMobileLayout(taskState),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigate to Add Task page
+          _showAddTaskDialog(context, ref);
         },
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildMobileLayout() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: ListView.builder(
-        itemCount: 1, // Replace with the task count
-        itemBuilder: (context, index) {
-          return TaskCardWidget(index: index);
-        },
-      ),
+  Widget _buildMobileLayout(TaskState taskState) {
+    // Build layout for mobile
+    return ListView.builder(
+      itemCount: taskState.tasks.length,
+      itemBuilder: (context, index) {
+        final task = taskState.tasks[index];
+        return TaskCardWidget(task: task);
+      },
     );
   }
 
-  Widget _buildTabletLayout() {
-    return Row(
-      children: [
-        Expanded(
-          flex: 1, child: _buildMobileLayout(), // Task list
-        ),
-        VerticalDivider(width: 1),
-        Expanded(
-          flex: 2,
-          child: Center(
-            child: Text('Select a task to view details'),
-          ),
-        ),
-      ],
-    );
-  }
+  void _showAddTaskDialog(BuildContext context, WidgetRef ref) {
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    DateTime? selectedDueDate;
 
-  Widget _buildTaskCard(int index) {
-    List<TaskModel> _taskList = [
-      TaskModel(
-        title: 'Take a break',
-        description: 'Task Description $index',
-        date: DateTime.now(),
-        isCompleted: false,
-      ),
-    ];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.5),
-            spreadRadius: 1,
-            blurRadius: 2,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 45.0,
-            // Icon size
-            height: 45.0,
-            decoration: BoxDecoration(
-              color: Colors.blue, // Background color of the icon
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                'T',
-                style: TextStyle(
-                  color: Colors.white,
-                  // Text color
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14.0, // Font size for initials
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Add Task"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                _taskList[index].title,
-                style: TextStyle(
-                  fontSize: 14,
-                ),
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: "Title"),
               ),
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(labelText: "Description"),
+              ),
+              const SizedBox(height: 20),
               Row(
-                spacing: 5,
                 children: [
-                  Icon(
-                    Icons.notifications_active,
-                    size: 12,
-                    color: Colors.grey,
-                  ),
-                  Text(
-                    DateFormat('EEEE, hh:mm a').format(_taskList[index].date),
-                    style: TextStyle(
-                      fontSize: 10,
+                  Expanded(
+                    child: Text(
+                      selectedDueDate == null
+                          ? "No due date selected"
+                          : "Due Date: ${DateFormat('dd/MM/yyyy').format(selectedDueDate!)}",
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime(2100),
+                      );
+                      if (pickedDate != null) {
+                        selectedDueDate = pickedDate;
+                      }
+                    },
                   ),
                 ],
               ),
             ],
           ),
-          Spacer(),
-          CheckBoxRounded(
-            checkedColor: Colors.blue,
-            onTap: (bool? value) {},
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                final title = titleController.text.trim();
+                final description = descriptionController.text.trim();
+
+                if (title.isNotEmpty &&
+                    description.isNotEmpty &&
+                    selectedDueDate != null) {
+                  ref.read(taskNotifierProvider.notifier).addTask(
+                        Task(
+                          id: DateTime.now().millisecondsSinceEpoch,
+                          // Generate unique ID
+                          title: title,
+                          description: description,
+                          isCompleted: false,
+                          dueDate: selectedDueDate!,
+                        ),
+                      );
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text("Please fill all fields and select a due date."),
+                    ),
+                  );
+                }
+              },
+              child: const Text("Add"),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
 class TaskCardWidget extends StatefulWidget {
-  final int index;
-  TaskCardWidget({required this.index});
+  final Task task;
+  const TaskCardWidget({super.key, required this.task});
 
   @override
   _TaskCardWidgetState createState() => _TaskCardWidgetState();
@@ -165,15 +179,6 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
 
   @override
   Widget build(BuildContext context) {
-    List<TaskModel> _taskList = [
-      TaskModel(
-        title: 'Take a break',
-        description: 'Task Description ${widget.index}',
-        date: DateTime.now(),
-        isCompleted: false,
-      ),
-    ];
-
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -188,7 +193,7 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.5),
+              color: Colors.grey.withValues(alpha: 0.5),
               spreadRadius: 1,
               blurRadius: 2,
               offset: Offset(0, 1),
@@ -223,7 +228,7 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _taskList[widget.index].title,
+                      widget.task.title,
                       style: TextStyle(
                         fontSize: 14,
                       ),
@@ -238,7 +243,7 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
                         ),
                         Text(
                           DateFormat('EEEE, hh:mm a')
-                              .format(_taskList[widget.index].date),
+                              .format(widget.task.dueDate),
                           style: TextStyle(
                             fontSize: 10,
                           ),
@@ -253,7 +258,8 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
                   onTap: (bool? value) {},
                 ),
               ],
-            ), // Animated expansion
+            ),
+            // Animated expansion
             AnimatedCrossFade(
               firstChild: SizedBox.shrink(),
               // Empty widget when collapsed
@@ -266,7 +272,7 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
                       style: TextStyle(fontSize: 12),
                     ),
                     Text(
-                      _taskList[widget.index].description,
+                      widget.task.description,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey,
