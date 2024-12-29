@@ -16,12 +16,57 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProviderScope(  // Wrap the app with ProviderScope
       child: MaterialApp(
+        themeMode: ThemeMode.dark,
         title: 'Task Management App',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
+        theme: _lightTheme(), // Light theme settings
+        darkTheme: _darkTheme(),
         home: const TaskPage(),
+      ),
+    );
+  }
+
+  ThemeData _lightTheme() {
+    return ThemeData(
+      brightness: Brightness.light,
+      primaryColor: Colors.blue,
+      appBarTheme: const AppBarTheme(
+        color: Colors.blue,
+        elevation: 0,
+      ),
+      scaffoldBackgroundColor: Colors.white,
+      textTheme: const TextTheme(
+        bodySmall: TextStyle(color: Colors.black),
+        bodyMedium: TextStyle(color: Colors.black54),
+        bodyLarge: TextStyle(color: Colors.black),
+      ),
+      iconTheme: const IconThemeData(
+        color: Colors.black,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  ThemeData _darkTheme() {
+    return ThemeData(
+      brightness: Brightness.dark,
+      primaryColor: Colors.blueAccent,
+      appBarTheme: const AppBarTheme(
+        color: Colors.blueAccent,
+        elevation: 0,
+      ),
+      scaffoldBackgroundColor: Colors.black,
+      textTheme: const TextTheme(
+        bodySmall: TextStyle(color: Colors.white),
+        bodyMedium: TextStyle(color: Colors.white70),
+        bodyLarge: TextStyle(color: Colors.white),
+      ),
+      iconTheme: const IconThemeData(
+        color: Colors.white,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: Colors.blueAccent,
       ),
     );
   }

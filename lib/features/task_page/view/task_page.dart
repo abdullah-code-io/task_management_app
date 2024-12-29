@@ -38,7 +38,12 @@ class _TaskPageState extends ConsumerState<TaskPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Task Manager'),
+        title: Text(
+          'Task Manager',
+          style: TextStyle(
+            color: Theme.of(context).textTheme.bodyMedium?.color,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -54,7 +59,21 @@ class _TaskPageState extends ConsumerState<TaskPage> {
           ),
         ],
       ),
-      body: _buildMobileLayout(taskState),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('All task',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                )),
+            const SizedBox(height: 10),
+            Expanded(child: _buildMobileLayout(taskState)),
+          ],
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           _showAddTaskDialog(context, ref);
@@ -70,7 +89,22 @@ class _TaskPageState extends ConsumerState<TaskPage> {
       itemCount: taskState.tasks.length,
       itemBuilder: (context, index) {
         final task = taskState.tasks[index];
-        return TaskCardWidget(task: task);
+        return TaskCardWidget(
+          task: task,
+          onTaskComplete: (isCompleted) {
+            ref
+                .read(taskNotifierProvider.notifier)
+                .updateTaskStatus(task.id, isCompleted);
+          },
+          onTaskEdit: (updatedTask) {
+            ref
+                .read(taskNotifierProvider.notifier)
+                .updateTask(task.id, updatedTask);
+          },
+          onTaskDelete: () {
+            ref.read(taskNotifierProvider.notifier).deleteTask(task.id);
+          },
+        );
       },
     );
   }
@@ -83,84 +117,107 @@ class _TaskPageState extends ConsumerState<TaskPage> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text("Add Task"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: "Title"),
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: Text(
+              "Add Task",
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: "Description"),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      selectedDueDate == null
-                          ? "No due date selected"
-                          : "Due Date: ${DateFormat('dd/MM/yyyy').format(selectedDueDate!)}",
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.calendar_today),
-                    onPressed: () async {
-                      final pickedDate = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime(2100),
-                      );
-                      if (pickedDate != null) {
-                        selectedDueDate = pickedDate;
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Cancel"),
             ),
-            TextButton(
-              onPressed: () {
-                final title = titleController.text.trim();
-                final description = descriptionController.text.trim();
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: "Title"),
+                ),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: "Description"),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        selectedDueDate == null
+                            ? "No due date selected"
+                            : "Due Date: ${DateFormat('dd/MM/yyyy').format(selectedDueDate!)}",
+                        style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.calendar_today),
+                      onPressed: () async {
+                        final pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2100),
+                        );
+                        if (pickedDate != null) {
+                          setState(() {
+                            selectedDueDate = pickedDate;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text("Cancel",
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                    )),
+              ),
+              TextButton(
+                  onPressed: () {
+                    final title = titleController.text.trim();
+                    final description = descriptionController.text.trim();
 
-                if (title.isNotEmpty &&
-                    description.isNotEmpty &&
-                    selectedDueDate != null) {
-                  ref.read(taskNotifierProvider.notifier).addTask(
-                        Task(
-                          id: DateTime.now().millisecondsSinceEpoch,
-                          // Generate unique ID
-                          title: title,
-                          description: description,
-                          isCompleted: false,
-                          dueDate: selectedDueDate!,
+                    if (title.isNotEmpty &&
+                        description.isNotEmpty &&
+                        selectedDueDate != null) {
+                      ref.read(taskNotifierProvider.notifier).addTask(
+                            Task(
+                              id: DateTime.now().millisecondsSinceEpoch,
+                              // Generate unique ID
+                              title: title,
+                              description: description,
+                              isCompleted: false,
+                              dueDate: selectedDueDate!,
+                            ),
+                          );
+                      Navigator.of(context).pop();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              "Please fill all fields and select a due date.",
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.color,
+                              )),
                         ),
                       );
-                  Navigator.of(context).pop();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text("Please fill all fields and select a due date."),
-                    ),
-                  );
-                }
-              },
-              child: const Text("Add"),
-            ),
-          ],
-        );
+                    }
+                  },
+                  child: Text("Add",
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      ))),
+            ],
+          );
+        });
       },
     );
   }
@@ -168,7 +225,16 @@ class _TaskPageState extends ConsumerState<TaskPage> {
 
 class TaskCardWidget extends StatefulWidget {
   final Task task;
-  const TaskCardWidget({super.key, required this.task});
+  final Function(bool) onTaskComplete;
+  final Function(Task) onTaskEdit;
+  final Function() onTaskDelete;
+
+  const TaskCardWidget(
+      {super.key,
+      required this.task,
+      required this.onTaskComplete,
+      required this.onTaskEdit,
+      required this.onTaskDelete});
 
   @override
   _TaskCardWidgetState createState() => _TaskCardWidgetState();
@@ -231,6 +297,7 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
                       widget.task.title,
                       style: TextStyle(
                         fontSize: 14,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                     ),
                     Row(
@@ -246,6 +313,8 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
                               .format(widget.task.dueDate),
                           style: TextStyle(
                             fontSize: 10,
+                            color:
+                                Theme.of(context).textTheme.bodyMedium?.color,
                           ),
                         ),
                       ],
@@ -254,8 +323,11 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
                 ),
                 Spacer(),
                 CheckBoxRounded(
+                  isChecked: widget.task.isCompleted,
                   checkedColor: Colors.blue,
-                  onTap: (bool? value) {},
+                  onTap: (bool? value) {
+                    widget.onTaskComplete(value!);
+                  },
                 ),
               ],
             ),
@@ -269,15 +341,33 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
                   children: [
                     Text(
                       'Description: ',
-                      style: TextStyle(fontSize: 12),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).textTheme.bodyMedium?.color),
                     ),
                     Text(
                       widget.task.description,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                       ),
                     ),
+                    Spacer(),
+                    InkWell(
+                        onTap: () async {
+                          final updatedTask =
+                              await _showEditTaskDialog(context, widget.task);
+                          if (updatedTask != null) {
+                            widget.onTaskEdit(updatedTask);
+                          }
+                        },
+                        child: Icon(Icons.edit)),
+                    SizedBox(width: 10),
+                    InkWell(
+                        onTap: () {
+                          widget.onTaskDelete();
+                        },
+                        child: Icon(Icons.delete)),
                   ],
                 ),
               ),
@@ -289,6 +379,123 @@ class _TaskCardWidgetState extends State<TaskCardWidget> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<Task?> _showEditTaskDialog(BuildContext context, Task task) async {
+    final titleController = TextEditingController(text: task.title);
+    final descriptionController = TextEditingController(text: task.description);
+    DateTime? selectedDueDate = task.dueDate;
+
+    // Wait for the dialog result asynchronously
+    return await showDialog<Task?>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Update Task",
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  )),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: "Title"),
+                  ),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(labelText: "Description"),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                            selectedDueDate == null
+                                ? "No due date selected"
+                                : "Due Date: ${DateFormat('dd/MM/yyyy').format(selectedDueDate!)}",
+                            style: TextStyle(
+                              color:
+                                  Theme.of(context).textTheme.bodyMedium?.color,
+                            )),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.calendar_today),
+                        onPressed: () async {
+                          final pickedDate = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDueDate ?? DateTime.now(),
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime(2100),
+                          );
+                          if (pickedDate != null) {
+                            setState(() {
+                              selectedDueDate = pickedDate;
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text("Cancel",
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      )),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final title = titleController.text.trim();
+                    final description = descriptionController.text.trim();
+
+                    if (title.isNotEmpty &&
+                        description.isNotEmpty &&
+                        selectedDueDate != null) {
+                      // Return the updated task
+                      final updatedTask = Task(
+                        id: task.id,
+                        // Keep the original ID
+                        title: title,
+                        description: description,
+                        isCompleted: task.isCompleted,
+                        // Keep the original completion status
+                        dueDate: selectedDueDate!,
+                      );
+
+                      Navigator.of(context).pop(
+                          updatedTask); // Close the dialog and return the updated task
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              "Please fill all fields and select a due date.",
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.color,
+                              )),
+                        ),
+                      );
+                    }
+                  },
+                  child: Text("Update",
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      )),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

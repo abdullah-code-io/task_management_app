@@ -47,12 +47,22 @@ class TaskNotifier extends StateNotifier<TaskState> {
   }
 
   // Update a task's completion status in SQLite
-  Future<void> updateTaskStatus(Task task) async {
+  Future<void> updateTaskStatus(int id, bool isCompleted) async {
     try {
-      await _databaseService.updateTask(task);
+      await _databaseService.updateTaskCompletionStatus(id, isCompleted);
       loadTasks(); // Reload tasks after update
     } catch (e) {
       Log.e('Failed to update task status: $e');
+    }
+  }
+
+  // Delete a task from SQLite
+  Future<void> updateTask(int taskId, Task task) async {
+    try {
+      await _databaseService.updateTask(taskId, task);
+      loadTasks(); // Reload tasks after delete
+    } catch (e) {
+      Log.e('Failed to delete task: $e');
     }
   }
 

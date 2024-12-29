@@ -1,6 +1,5 @@
 import 'package:task_management_app/features/task_page/model/task_model.dart';
 
-
 class TaskState {
   final List<Task> tasks;
   final List<String> sortOptions;

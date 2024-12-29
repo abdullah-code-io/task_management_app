@@ -51,15 +51,31 @@ class DatabaseService {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  // Update an existing task
-  Future<void> updateTask(Task task) async {
+  // Add this method in DatabaseService
+  Future<void> updateTaskCompletionStatus(int taskId, bool isCompleted) async {
     await _database.update(
       'tasks',
-      task.toMap(),
+      {'isCompleted': isCompleted ? 1 : 0}, // SQLite stores bool as 1 or 0
       where: 'id = ?',
-      whereArgs: [task.id],
+      whereArgs: [taskId],
     );
   }
+
+  // Add this method in DatabaseService
+  Future<void> updateTask(int taskId, Task task) async {
+    await _database.update(
+      'tasks',
+      {
+        'title': task.title,
+        'description': task.description,
+        'isCompleted': task.isCompleted ? 1 : 0,
+        'dueDate': task.dueDate.toIso8601String(),
+      }, // SQLite stores bool as 1 or 0
+      where: 'id = ?',
+      whereArgs: [taskId],
+    );
+  }
+
 
   // Delete a task
   Future<void> deleteTask(int id) async {
